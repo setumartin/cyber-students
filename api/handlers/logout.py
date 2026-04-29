@@ -6,8 +6,9 @@ class LogoutHandler(AuthHandler):
 
     @authenticated
     async def post(self):
+        # Use the encrypted email from current_user
         await self.db.users.update_one({
-            'email': self.current_user['email'],
+            'email_encrypted': self.current_user['email_encrypted']
         }, {
             '$set': {
                 'token': None

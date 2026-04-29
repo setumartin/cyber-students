@@ -6,6 +6,7 @@ from tornado.web import Application
 from .base import BaseTest
 
 from api.handlers.login import LoginHandler
+from api.security import hash_password, encrypt_field, hash_email
 
 class LoginHandlerTest(BaseTest):
 
@@ -15,10 +16,16 @@ class LoginHandlerTest(BaseTest):
         super().setUpClass()
 
     async def register(self):
+        # Hash email for lookup, encrypt displayName, hash password
+        email_hash = hash_email(self.email)
+        hashed_password = hash_password(self.password)
+        encrypted_display_name = encrypt_field('testDisplayName')
+        
         await self.get_app().db.users.insert_one({
-            'email': self.email,
-            'password': self.password,
-            'displayName': 'testDisplayName'
+            'email': email_hash,
+            'email_encrypted': encrypt_field(self.email),
+            'password': hashed_password,
+            'displayName': encrypted_display_name
         })
 
     def setUp(self):

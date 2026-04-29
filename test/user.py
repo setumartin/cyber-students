@@ -5,6 +5,7 @@ from tornado.ioloop import IOLoop
 from tornado.web import Application
 
 from api.handlers.user import UserHandler
+from api.security import hash_password, encrypt_field, hash_token, hash_email
 
 from .base import BaseTest
 
@@ -16,17 +17,27 @@ class UserHandlerTest(BaseTest):
         super().setUpClass()
 
     async def register(self):
+        # Hash email for lookup, encrypt displayName, hash password
+        email_hash = hash_email(self.email)
+        hashed_password = hash_password(self.password)
+        encrypted_display_name = encrypt_field(self.display_name)
+        
         await self.get_app().db.users.insert_one({
-            'email': self.email,
-            'password': self.password,
-            'displayName': self.display_name
+            'email': email_hash,
+            'email_encrypted': encrypt_field(self.email),
+            'password': hashed_password,
+            'displayName': encrypted_display_name
         })
 
     async def login(self):
+        # Hash the token for storage
+        token_hash = hash_token(self.token)
+        email_hash = hash_email(self.email)
+        
         await self.get_app().db.users.update_one({
-            'email': self.email
+            'email': email_hash
         }, {
-            '$set': { 'token': self.token, 'expiresIn': 2147483647 }
+            '$set': { 'token': token_hash, 'expiresIn': 2147483647 }
         })
 
     def setUp(self):

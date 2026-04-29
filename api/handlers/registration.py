@@ -1,5 +1,6 @@
 from tornado.escape import json_decode
 
+from ..security import hash_password, encrypt_field, hash_email
 from .base import BaseHandler
 
 class RegistrationHandler(BaseHandler):
@@ -30,18 +31,29 @@ class RegistrationHandler(BaseHandler):
             self.send_error(400, message='The display name is invalid!')
             return
 
+        # Hash email for lookup, encrypt for storage
+        email_hash = hash_email(email)
+        encrypted_email = encrypt_field(email)
+        
         user = await self.db.users.find_one({
-          'email': email
+          'email': email_hash
         })
 
         if user is not None:
             self.send_error(409, message='A user with the given email address already exists!')
             return
 
+        # Hash the password
+        hashed_password = hash_password(password)
+        
+        # Encrypt display name for storage
+        encrypted_display_name = encrypt_field(display_name)
+
         await self.db.users.insert_one({
-            'email': email,
-            'password': password,
-            'displayName': display_name
+            'email': email_hash,
+            'email_encrypted': encrypted_email,
+            'password': hashed_password,
+            'displayName': encrypted_display_name
         })
 
         self.set_status(200)

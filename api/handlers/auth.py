@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from ..security import hash_token, decrypt_field, hash_email
 from .base import BaseHandler
 
 class AuthHandler(BaseHandler):
@@ -19,10 +20,13 @@ class AuthHandler(BaseHandler):
             self.send_error(400, message='You must provide a token!')
             return
 
+        # Hash the token for lookup
+        token_hash = hash_token(token)
+        
         user = await self.db.users.find_one({
-            'token': token
+            'token': token_hash
         }, {
-            'email': 1,
+            'email_encrypted': 1,
             'displayName': 1,
             'expiresIn': 1
         })
@@ -38,7 +42,13 @@ class AuthHandler(BaseHandler):
             self.send_error(403, message='Your token has expired!')
             return
 
+        # Decrypt email and displayName
+        decrypted_email = decrypt_field(user['email_encrypted'])
+        decrypted_display_name = decrypt_field(user['displayName'])
+
+        # Store both decrypted and encrypted email for later use
         self.current_user = {
-            'email': user['email'],
-            'display_name': user['displayName']
+            'email': decrypted_email,
+            'email_encrypted': user['email_encrypted'],
+            'display_name': decrypted_display_name
         }
